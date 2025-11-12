@@ -1,5 +1,71 @@
 from flask import Flask, render_template, request, jsonify
 import pandas as pd
+import yfinance as yf
+from datetime import datetime, timedelta
+from models.price_predictor import BitcoinPricePredictor
+from models.model_manager import ModelManager
+from models.sentiment_analyzer import WikipediaSentimentAnalyzer
+
+app = Flask(__name__)
+
+class BitcoinPredictor:
+    def __init__(self):
+        self.model_manager = ModelManager()
+        self.predictor = BitcoinPricePredictor()
+        self.btc_data = None
+        self.last_update = None
+        
+    def get_current_data(self):
+        """Get current data for prediction"""
+        try:
+            # Load current Bitcoin data
+            btc_data = self.predictor.load_data()
+            merged_data = self.predictor.merge_with_sentiment(btc_data)
+            enhanced_data = self.predictor.create_features(merged_data)
+            
+            self.btc_data = enhanced_data
+            self.last_update = datetime.now()
+            return True
+            
+        except Exception as e:
+            print(f"Error getting current data: {e}")
+            return False
+    
+    def predict_tomorrow(self):
+        """Make prediction for tomorrow"""
+        if not self.model_manager.model_exists():
+            return {"error": "Model not trained. Please run update first."}
+        
+        if self.btc_data is None:
+            success = self.get_current_data()
+            if not success:
+                return {"error": "Failed to load current data"}
+        
+        try:
+            # Load model
+            self.model_manager.load_model()
+            self.predictor.model = self.model_manager.model
+            
+            # Use the predictors from the trained model
+            if hasattr(self.predictor.model, 'feature_names_in_'):
+                self.predictor.predictors = self.predictor.model.feature_names_in_.tolist()
+            
+            prediction = self.predictor.predict_next_day(self.btc_data)
+            prediction["last_updated"] = self.last_update.strftime("%Y-%m-%d %H:%M:%S")
+            prediction["prediction_date"] = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
+            
+            return prediction
+            
+        except Exception as e:
+            return {"error": f"Prediction error: {str(e)}"}
+
+# Initialize predictor
+predictor = BitcoinPredictor()
+
+# ... rest of your Flask app code remains the same ...
+
+from flask import Flask, render_template, request, jsonify
+import pandas as pd
 import numpy as np
 import yfinance as yf
 import pickle
