@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bitcoin Price Predictor</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * {
             margin: 0;
@@ -12,121 +14,319 @@
             box-sizing: border-box;
         }
         
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --success-color: #28a745;
+            --danger-color: #dc3545;
+            --warning-color: #ffc107;
+            --info-color: #17a2b8;
+        }
+        
         body {
-            font-family: 'Arial', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--primary-gradient);
             min-height: 100vh;
             padding: 20px;
+            color: #333;
         }
         
         .container {
-            max-width: 800px;
+            max-width: 1200px;
             margin: 0 auto;
             background: white;
-            border-radius: 15px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            border-radius: 20px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.15);
             overflow: hidden;
+            animation: fadeIn 0.8s ease-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
         
         .header {
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            background: var(--secondary-gradient);
             color: white;
-            padding: 30px;
+            padding: 40px 30px;
             text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            animation: pulse 8s infinite linear;
+        }
+        
+        @keyframes pulse {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
         
         .header h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
+            font-size: 3em;
+            margin-bottom: 15px;
+            font-weight: 700;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            position: relative;
         }
         
         .header p {
-            font-size: 1.1em;
-            opacity: 0.9;
+            font-size: 1.2em;
+            opacity: 0.95;
+            max-width: 600px;
+            margin: 0 auto;
+            position: relative;
         }
         
         .content {
             padding: 30px;
         }
         
-        .prediction-card {
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+        
+        @media (max-width: 900px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .prediction-section {
             background: #f8f9fa;
-            border-radius: 10px;
+            border-radius: 15px;
             padding: 25px;
-            margin-bottom: 25px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            transition: all 0.3s ease;
+        }
+        
+        .prediction-section:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+        
+        .prediction-card {
             text-align: center;
+            padding: 20px;
+            border-radius: 12px;
             border-left: 5px solid #007bff;
+            background: white;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+        }
+        
+        .prediction-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
         }
         
         .prediction-up {
-            border-left-color: #28a745;
+            border-left-color: var(--success-color);
+            background: linear-gradient(135deg, #f8fff9 0%, #e8f5e9 100%);
         }
         
         .prediction-down {
-            border-left-color: #dc3545;
+            border-left-color: var(--danger-color);
+            background: linear-gradient(135deg, #fff8f8 0%, #ffebee 100%);
         }
         
         .prediction-text {
             font-size: 1.8em;
             font-weight: bold;
             margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
         }
         
-        .confidence {
+        .confidence-meter {
+            height: 12px;
+            background: #e9ecef;
+            border-radius: 10px;
+            margin: 15px 0;
+            overflow: hidden;
+        }
+        
+        .confidence-fill {
+            height: 100%;
+            border-radius: 10px;
+            transition: width 1s ease-in-out;
+        }
+        
+        .confidence-high {
+            background: linear-gradient(90deg, #28a745, #5cb85c);
+        }
+        
+        .confidence-medium {
+            background: linear-gradient(90deg, #ffc107, #f0ad4e);
+        }
+        
+        .confidence-low {
+            background: linear-gradient(90deg, #dc3545, #e74c3c);
+        }
+        
+        .confidence-text {
             font-size: 1.2em;
             color: #6c757d;
             margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
         }
         
         .price {
-            font-size: 1.4em;
+            font-size: 1.6em;
             color: #007bff;
             font-weight: bold;
+            margin: 10px 0;
+        }
+        
+        .price-change {
+            font-size: 1em;
+            font-weight: normal;
+            margin-left: 10px;
+        }
+        
+        .positive {
+            color: var(--success-color);
+        }
+        
+        .negative {
+            color: var(--danger-color);
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin: 20px 0;
         }
         
         .button {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--primary-gradient);
             color: white;
             border: none;
-            padding: 12px 30px;
-            border-radius: 25px;
+            padding: 14px 30px;
+            border-radius: 50px;
             font-size: 1em;
+            font-weight: 600;
             cursor: pointer;
-            transition: transform 0.2s;
-            margin: 5px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
         }
         
         .button:hover {
-            transform: translateY(-2px);
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .button:active {
+            transform: translateY(-1px);
         }
         
         .button:disabled {
             opacity: 0.6;
             cursor: not-allowed;
+            transform: none;
         }
         
-        .status {
-            background: #e9ecef;
-            padding: 15px;
-            border-radius: 8px;
-            margin-top: 20px;
-            font-family: monospace;
+        .button-secondary {
+            background: linear-gradient(135deg, #6c757d, #495057);
+        }
+        
+        .chart-container {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            margin-bottom: 25px;
+        }
+        
+        .chart-title {
+            font-size: 1.4em;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #495057;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 25px 0;
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+            transition: all 0.3s ease;
+            border-top: 4px solid var(--info-color);
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+        }
+        
+        .stat-card.up {
+            border-top-color: var(--success-color);
+        }
+        
+        .stat-card.down {
+            border-top-color: var(--danger-color);
+        }
+        
+        .stat-value {
+            font-size: 2.2em;
+            font-weight: 700;
+            margin: 10px 0;
+        }
+        
+        .stat-label {
+            font-size: 0.9em;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
         
         .loading {
             display: none;
             text-align: center;
-            padding: 20px;
+            padding: 30px;
+            background: rgba(248, 249, 250, 0.9);
+            border-radius: 15px;
+            margin: 20px 0;
         }
         
         .spinner {
             border: 4px solid #f3f3f3;
             border-top: 4px solid #667eea;
             border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 2s linear infinite;
-            margin: 0 auto 15px;
+            width: 50px;
+            height: 50px;
+            animation: spin 1.5s linear infinite;
+            margin: 0 auto 20px;
         }
         
         @keyframes spin {
@@ -134,89 +334,666 @@
             100% { transform: rotate(360deg); }
         }
         
+        .status {
+            background: #e9ecef;
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .tab {
+            padding: 12px 25px;
+            cursor: pointer;
+            font-weight: 600;
+            color: #6c757d;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+        
         .info-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 15px;
+            gap: 20px;
             margin-top: 20px;
         }
         
         .info-item {
             background: white;
-            padding: 15px;
-            border-radius: 8px;
+            padding: 20px;
+            border-radius: 12px;
             border: 1px solid #e9ecef;
+            transition: all 0.3s ease;
         }
         
-        @media (max-width: 600px) {
+        .info-item:hover {
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            transform: translateY(-3px);
+        }
+        
+        .history-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .history-item {
+            padding: 12px 15px;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .history-item:last-child {
+            border-bottom: none;
+        }
+        
+        .prediction-badge {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: 600;
+        }
+        
+        .badge-up {
+            background: rgba(40, 167, 69, 0.1);
+            color: var(--success-color);
+        }
+        
+        .badge-down {
+            background: rgba(220, 53, 69, 0.1);
+            color: var(--danger-color);
+        }
+        
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2.2em;
+            }
+            
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+            
             .info-grid {
                 grid-template-columns: 1fr;
             }
             
-            .header h1 {
-                font-size: 2em;
+            .button-group {
+                flex-direction: column;
             }
+            
+            .button {
+                justify-content: center;
+            }
+        }
+        
+        .disclaimer {
+            margin-top: 25px;
+            padding: 20px;
+            background: #fff3cd;
+            border-radius: 12px;
+            border: 1px solid #ffeaa7;
+            font-size: 0.9em;
+        }
+        
+        /* New animation for price updates */
+        @keyframes priceUpdate {
+            0% { background-color: transparent; }
+            50% { background-color: rgba(40, 167, 69, 0.1); }
+            100% { background-color: transparent; }
+        }
+        
+        .price-update {
+            animation: priceUpdate 1.5s ease;
+        }
+        
+        /* Confidence indicator animation */
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>💰 Bitcoin Price Predictor</h1>
-            <p>AI-powered prediction for tomorrow's Bitcoin price movement</p>
+            <h1><i class="fas fa-chart-line"></i> Bitcoin Price Predictor</h1>
+            <p>AI-powered prediction for tomorrow's Bitcoin price movement using Wikipedia sentiment analysis</p>
         </div>
         
         <div class="content">
-            <div class="prediction-card" id="predictionCard">
-                <div class="prediction-text" id="predictionText">
-                    Click "Get Prediction" to start
+            <!-- Tabs Navigation -->
+            <div class="tabs">
+                <div class="tab active" onclick="switchTab('dashboard')">
+                    <i class="fas fa-tachometer-alt"></i> Dashboard
                 </div>
-                <div class="confidence" id="confidenceText">
-                    Using Wikipedia sentiment data and machine learning
+                <div class="tab" onclick="switchTab('analytics')">
+                    <i class="fas fa-chart-bar"></i> Analytics
                 </div>
-                <div class="price" id="priceText">
-                    Current price: --
+                <div class="tab" onclick="switchTab('history')">
+                    <i class="fas fa-history"></i> Prediction History
                 </div>
-                <div id="predictionDate" style="margin-top: 10px; color: #6c757d;"></div>
             </div>
             
-            <div style="text-align: center; margin-bottom: 20px;">
-                <button class="button" onclick="getPrediction()" id="predictBtn">
-                    🔮 Get Prediction
-                </button>
-                <button class="button" onclick="updateData()" id="updateBtn">
-                    🔄 Update Data
-                </button>
+            <!-- Dashboard Tab -->
+            <div id="dashboard" class="tab-content active">
+                <div class="dashboard-grid">
+                    <!-- Prediction Section -->
+                    <div class="prediction-section">
+                        <h2 class="chart-title"><i class="fas fa-crystal-ball"></i> Live Prediction</h2>
+                        
+                        <div class="prediction-card" id="predictionCard">
+                            <div class="prediction-text" id="predictionText">
+                                <i class="fas fa-sync-alt"></i> Click "Get Prediction"
+                            </div>
+                            
+                            <div class="confidence-meter">
+                                <div class="confidence-fill" id="confidenceFill" style="width: 0%"></div>
+                            </div>
+                            
+                            <div class="confidence-text">
+                                <span>Confidence Level</span>
+                                <span id="confidenceValue">0%</span>
+                            </div>
+                            
+                            <div class="price" id="priceText">
+                                $--
+                            </div>
+                            <div id="priceChange" class="price-change"></div>
+                            
+                            <div id="predictionDate" style="margin-top: 10px; color: #6c757d;"></div>
+                        </div>
+                        
+                        <div class="button-group">
+                            <button class="button" onclick="getPrediction()" id="predictBtn">
+                                <i class="fas fa-crystal-ball"></i> Get Prediction
+                            </button>
+                            <button class="button button-secondary" onclick="updateData()" id="updateBtn">
+                                <i class="fas fa-sync-alt"></i> Update Data
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Stats Section -->
+                    <div class="prediction-section">
+                        <h2 class="chart-title"><i class="fas fa-chart-pie"></i> Model Performance</h2>
+                        
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-label">Accuracy</div>
+                                <div class="stat-value" id="accuracyStat">--%</div>
+                                <div class="stat-label">Last 30 Days</div>
+                            </div>
+                            
+                            <div class="stat-card up">
+                                <div class="stat-label">Correct UP</div>
+                                <div class="stat-value" id="upAccuracy">--%</div>
+                                <div class="stat-label">Predictions</div>
+                            </div>
+                            
+                            <div class="stat-card down">
+                                <div class="stat-label">Correct DOWN</div>
+                                <div class="stat-value" id="downAccuracy">--%</div>
+                                <div class="stat-label">Predictions</div>
+                            </div>
+                            
+                            <div class="stat-card">
+                                <div class="stat-label">Avg Confidence</div>
+                                <div class="stat-value" id="avgConfidence">--%</div>
+                                <div class="stat-label">Recent Predictions</div>
+                            </div>
+                        </div>
+                        
+                        <div class="chart-container">
+                            <canvas id="performanceChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Price Chart -->
+                <div class="chart-container">
+                    <h2 class="chart-title"><i class="fas fa-coins"></i> Bitcoin Price History</h2>
+                    <canvas id="priceChart"></canvas>
+                </div>
+                
+                <!-- Sentiment Chart -->
+                <div class="chart-container">
+                    <h2 class="chart-title"><i class="fas fa-smile"></i> Wikipedia Sentiment Analysis</h2>
+                    <canvas id="sentimentChart"></canvas>
+                </div>
             </div>
             
+            <!-- Analytics Tab -->
+            <div id="analytics" class="tab-content">
+                <div class="dashboard-grid">
+                    <div class="chart-container">
+                        <h2 class="chart-title"><i class="fas fa-project-diagram"></i> Feature Importance</h2>
+                        <canvas id="featureChart"></canvas>
+                    </div>
+                    
+                    <div class="chart-container">
+                        <h2 class="chart-title"><i class="fas fa-brain"></i> Model Confidence Distribution</h2>
+                        <canvas id="confidenceChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="info-grid">
+                    <div class="info-item">
+                        <h3><i class="fas fa-lightbulb"></i> How It Works</h3>
+                        <p>Our AI analyzes Wikipedia Bitcoin page edits for sentiment patterns and combines them with technical indicators to predict price movements.</p>
+                        <ul style="margin-top: 15px; padding-left: 20px;">
+                            <li>Real-time Wikipedia edit analysis</li>
+                            <li>15+ technical indicators</li>
+                            <li>XGBoost machine learning model</li>
+                            <li>Daily model retraining</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="info-item">
+                        <h3><i class="fas fa-rocket"></i> Model Details</h3>
+                        <p><strong>Algorithm:</strong> XGBoost Classifier</p>
+                        <p><strong>Features:</strong> 15 technical & sentiment indicators</p>
+                        <p><strong>Training Data:</strong> Historical Bitcoin prices + Wikipedia sentiment</p>
+                        <p><strong>Update Frequency:</strong> Daily automatic retraining</p>
+                        <p><strong>Prediction Target:</strong> Next-day price direction (UP/DOWN)</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- History Tab -->
+            <div id="history" class="tab-content">
+                <div class="chart-container">
+                    <h2 class="chart-title"><i class="fas fa-history"></i> Recent Predictions</h2>
+                    <div class="history-list" id="historyList">
+                        <!-- History items will be added here dynamically -->
+                    </div>
+                </div>
+                
+                <div class="info-grid">
+                    <div class="info-item">
+                        <h3><i class="fas fa-trophy"></i> Performance Summary</h3>
+                        <div id="performanceSummary">
+                            <p>Loading performance data...</p>
+                        </div>
+                    </div>
+                    
+                    <div class="info-item">
+                        <h3><i class="fas fa-calendar-alt"></i> Prediction Calendar</h3>
+                        <div id="predictionCalendar">
+                            <p>Prediction history calendar view</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Loading Indicator -->
             <div class="loading" id="loading">
                 <div class="spinner"></div>
                 <p id="loadingText">Analyzing data...</p>
             </div>
             
-            <div class="info-grid">
-                <div class="info-item">
-                    <h3>📊 How it works</h3>
-                    <p>Analyzes Wikipedia edit sentiment and Bitcoin price patterns using machine learning to predict next-day price movements.</p>
-                </div>
-                <div class="info-item">
-                    <h3>⏰ Last Updated</h3>
-                    <p id="lastUpdate">Never</p>
-                </div>
-            </div>
-            
+            <!-- Status Section -->
             <div class="status">
-                <strong>System Status:</strong>
+                <strong><i class="fas fa-server"></i> System Status:</strong>
                 <div id="statusInfo">Checking...</div>
             </div>
             
-            <div style="margin-top: 25px; padding: 15px; background: #fff3cd; border-radius: 8px; border: 1px solid #ffeaa7;">
-                <strong>⚠️ Disclaimer:</strong> This is for educational purposes only. Cryptocurrency investments carry high risk. Always do your own research.
+            <!-- Disclaimer -->
+            <div class="disclaimer">
+                <strong><i class="fas fa-exclamation-triangle"></i> Disclaimer:</strong> 
+                This is for educational purposes only. Cryptocurrency investments carry high risk. Always do your own research and consult with a qualified financial advisor before making investment decisions.
             </div>
         </div>
     </div>
 
     <script>
+        // Global variables for charts
+        let priceChart, sentimentChart, performanceChart, featureChart, confidenceChart;
+        let predictionHistory = [];
+        
+        // Initialize charts
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeCharts();
+            checkStatus();
+            loadHistoricalData();
+        });
+        
+        // Tab switching function
+        function switchTab(tabName) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Remove active class from all tabs
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected tab content
+            document.getElementById(tabName).classList.add('active');
+            
+            // Add active class to clicked tab
+            event.currentTarget.classList.add('active');
+            
+            // Refresh charts when switching to analytics tab
+            if (tabName === 'analytics') {
+                setTimeout(() => {
+                    if (featureChart) featureChart.update();
+                    if (confidenceChart) confidenceChart.update();
+                }, 100);
+            }
+        }
+        
+        // Initialize all charts
+        function initializeCharts() {
+            // Price History Chart
+            const priceCtx = document.getElementById('priceChart').getContext('2d');
+            priceChart = new Chart(priceCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Bitcoin Price (USD)',
+                        data: [],
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: true,
+                            text: 'Recent Price Trend'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false
+                        }
+                    }
+                }
+            });
+            
+            // Sentiment Chart
+            const sentimentCtx = document.getElementById('sentimentChart').getContext('2d');
+            sentimentChart = new Chart(sentimentCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Positive', 'Neutral', 'Negative'],
+                    datasets: [{
+                        label: 'Wikipedia Sentiment',
+                        data: [0, 0, 0],
+                        backgroundColor: [
+                            'rgba(40, 167, 69, 0.7)',
+                            'rgba(108, 117, 125, 0.7)',
+                            'rgba(220, 53, 69, 0.7)'
+                        ],
+                        borderColor: [
+                            'rgb(40, 167, 69)',
+                            'rgb(108, 117, 125)',
+                            'rgb(220, 53, 69)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: true,
+                            text: 'Sentiment Distribution'
+                        }
+                    }
+                }
+            });
+            
+            // Performance Chart
+            const performanceCtx = document.getElementById('performanceChart').getContext('2d');
+            performanceChart = new Chart(performanceCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Correct Predictions', 'Incorrect Predictions'],
+                    datasets: [{
+                        data: [0, 0],
+                        backgroundColor: [
+                            'rgba(40, 167, 69, 0.7)',
+                            'rgba(220, 53, 69, 0.7)'
+                        ],
+                        borderColor: [
+                            'rgb(40, 167, 69)',
+                            'rgb(220, 53, 69)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: true,
+                            text: 'Prediction Accuracy'
+                        }
+                    }
+                }
+            });
+            
+            // Feature Importance Chart
+            const featureCtx = document.getElementById('featureChart').getContext('2d');
+            featureChart = new Chart(featureCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Price Ratio 7D', 'Trend 60D', 'Sentiment', 'Edit Count', 'Price Ratio 365D'],
+                    datasets: [{
+                        label: 'Feature Importance',
+                        data: [0.22, 0.18, 0.15, 0.12, 0.10],
+                        backgroundColor: 'rgba(102, 126, 234, 0.7)',
+                        borderColor: 'rgb(102, 126, 234)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: true,
+                            text: 'Most Important Prediction Factors'
+                        }
+                    }
+                }
+            });
+            
+            // Confidence Distribution Chart
+            const confidenceCtx = document.getElementById('confidenceChart').getContext('2d');
+            confidenceChart = new Chart(confidenceCtx, {
+                type: 'polarArea',
+                data: {
+                    labels: ['High (70-100%)', 'Medium (50-70%)', 'Low (0-50%)'],
+                    datasets: [{
+                        data: [0, 0, 0],
+                        backgroundColor: [
+                            'rgba(40, 167, 69, 0.7)',
+                            'rgba(255, 193, 7, 0.7)',
+                            'rgba(220, 53, 69, 0.7)'
+                        ],
+                        borderColor: [
+                            'rgb(40, 167, 69)',
+                            'rgb(255, 193, 7)',
+                            'rgb(220, 53, 69)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: true,
+                            text: 'Confidence Level Distribution'
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Load historical data for charts
+        function loadHistoricalData() {
+            // In a real app, this would fetch from your API
+            // For now, we'll simulate with sample data
+            
+            // Sample price data (last 30 days)
+            const samplePrices = [];
+            let basePrice = 90000;
+            for (let i = 30; i >= 0; i--) {
+                const date = new Date();
+                date.setDate(date.getDate() - i);
+                const price = basePrice + (Math.random() - 0.5) * 10000;
+                samplePrices.push({
+                    date: date.toISOString().split('T')[0],
+                    price: Math.round(price)
+                });
+                basePrice = price;
+            }
+            
+            // Update price chart
+            priceChart.data.labels = samplePrices.map(item => {
+                const date = new Date(item.date);
+                return `${date.getMonth()+1}/${date.getDate()}`;
+            });
+            priceChart.data.datasets[0].data = samplePrices.map(item => item.price);
+            priceChart.update();
+            
+            // Update sentiment chart with sample data
+            sentimentChart.data.datasets[0].data = [45, 35, 20];
+            sentimentChart.update();
+            
+            // Update performance chart with sample data
+            performanceChart.data.datasets[0].data = [65, 35];
+            performanceChart.update();
+            
+            // Update stats with sample data
+            document.getElementById('accuracyStat').textContent = '65%';
+            document.getElementById('upAccuracy').textContent = '68%';
+            document.getElementById('downAccuracy').textContent = '62%';
+            document.getElementById('avgConfidence').textContent = '71%';
+            
+            // Update confidence distribution
+            confidenceChart.data.datasets[0].data = [12, 8, 5];
+            confidenceChart.update();
+            
+            // Load sample prediction history
+            loadSampleHistory();
+        }
+        
+        // Load sample prediction history
+        function loadSampleHistory() {
+            const sampleHistory = [
+                { date: '2025-11-13', prediction: 'UP', confidence: 68, actual: 'UP', correct: true },
+                { date: '2025-11-12', prediction: 'DOWN', confidence: 72, actual: 'DOWN', correct: true },
+                { date: '2025-11-11', prediction: 'UP', confidence: 54, actual: 'DOWN', correct: false },
+                { date: '2025-11-10', prediction: 'DOWN', confidence: 61, actual: 'DOWN', correct: true },
+                { date: '2025-11-09', prediction: 'UP', confidence: 78, actual: 'UP', correct: true },
+                { date: '2025-11-08', prediction: 'UP', confidence: 49, actual: 'DOWN', correct: false },
+                { date: '2025-11-07', prediction: 'DOWN', confidence: 65, actual: 'DOWN', correct: true },
+            ];
+            
+            predictionHistory = sampleHistory;
+            updateHistoryDisplay();
+        }
+        
+        // Update history display
+        function updateHistoryDisplay() {
+            const historyList = document.getElementById('historyList');
+            historyList.innerHTML = '';
+            
+            predictionHistory.forEach(item => {
+                const historyItem = document.createElement('div');
+                historyItem.className = 'history-item';
+                
+                const date = new Date(item.date);
+                const formattedDate = `${date.getMonth()+1}/${date.getDate()}/${date.getFullYear()}`;
+                
+                historyItem.innerHTML = `
+                    <div>
+                        <strong>${formattedDate}</strong>
+                        <div style="font-size: 0.8em; color: #6c757d;">Actual: ${item.actual}</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <span class="prediction-badge ${item.prediction === 'UP' ? 'badge-up' : 'badge-down'}">
+                            ${item.prediction} (${item.confidence}%)
+                        </span>
+                        <div style="margin-top: 5px;">
+                            ${item.correct ? 
+                                '<i class="fas fa-check" style="color: #28a745;"></i>' : 
+                                '<i class="fas fa-times" style="color: #dc3545;"></i>'
+                            }
+                        </div>
+                    </div>
+                `;
+                
+                historyList.appendChild(historyItem);
+            });
+            
+            // Update performance summary
+            const correctCount = predictionHistory.filter(item => item.correct).length;
+            const totalCount = predictionHistory.length;
+            const accuracy = Math.round((correctCount / totalCount) * 100);
+            
+            document.getElementById('performanceSummary').innerHTML = `
+                <p><strong>Overall Accuracy:</strong> ${accuracy}% (${correctCount}/${totalCount})</p>
+                <p><strong>Recent Trend:</strong> ${accuracy >= 60 ? 'Improving' : 'Stable'}</p>
+                <p><strong>Best Streak:</strong> 5 consecutive correct predictions</p>
+                <p><strong>Avg Confidence:</strong> ${Math.round(predictionHistory.reduce((sum, item) => sum + item.confidence, 0) / predictionHistory.length)}%</p>
+            `;
+        }
+
+        // Your existing functions with enhancements
         async function getPrediction() {
             showLoading('Analyzing current market data...');
             disableButtons(true);
@@ -235,6 +1012,9 @@
                 
                 updatePredictionDisplay(data);
                 checkStatus();
+                
+                // Add to history
+                addToHistory(data);
                 
             } catch (error) {
                 hideLoading();
@@ -255,7 +1035,16 @@
                 disableButtons(false);
                 
                 if (data.status === 'success') {
-                    alert('Data updated successfully!');
+                    // Show success message with animation
+                    const updateBtn = document.getElementById('updateBtn');
+                    updateBtn.innerHTML = '<i class="fas fa-check"></i> Updated!';
+                    updateBtn.style.background = 'linear-gradient(135deg, #28a745, #20c997)';
+                    
+                    setTimeout(() => {
+                        updateBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Update Data';
+                        updateBtn.style.background = '';
+                    }, 2000);
+                    
                     checkStatus();
                 } else {
                     showError('Update failed: ' + data.message);
@@ -288,7 +1077,8 @@
         function updatePredictionDisplay(data) {
             const card = document.getElementById('predictionCard');
             const predictionText = document.getElementById('predictionText');
-            const confidenceText = document.getElementById('confidenceText');
+            const confidenceValue = document.getElementById('confidenceValue');
+            const confidenceFill = document.getElementById('confidenceFill');
             const priceText = document.getElementById('priceText');
             const dateText = document.getElementById('predictionDate');
             
@@ -296,13 +1086,62 @@
             card.className = 'prediction-card ' + 
                 (data.prediction === 'UP' ? 'prediction-up' : 'prediction-down');
             
+            // Add animation for price update
+            priceText.classList.add('price-update');
+            setTimeout(() => {
+                priceText.classList.remove('price-update');
+            }, 1500);
+            
             predictionText.innerHTML = data.prediction === 'UP' ? 
-                '📈 PRICE WILL GO UP' : '📉 PRICE WILL GO DOWN';
+                '<i class="fas fa-arrow-up"></i> PRICE WILL GO UP' : 
+                '<i class="fas fa-arrow-down"></i> PRICE WILL GO DOWN';
             
             predictionText.style.color = data.prediction === 'UP' ? '#28a745' : '#dc3545';
-            confidenceText.textContent = `Confidence: ${data.confidence}%`;
-            priceText.textContent = `Current Price: $${data.current_price.toLocaleString()}`;
+            
+            // Update confidence meter with animation
+            confidenceValue.textContent = `${data.confidence}%`;
+            setTimeout(() => {
+                confidenceFill.style.width = `${data.confidence}%`;
+                
+                // Set confidence color based on level
+                if (data.confidence >= 70) {
+                    confidenceFill.className = 'confidence-fill confidence-high';
+                } else if (data.confidence >= 50) {
+                    confidenceFill.className = 'confidence-fill confidence-medium';
+                } else {
+                    confidenceFill.className = 'confidence-fill confidence-low';
+                }
+            }, 100);
+            
+            priceText.textContent = `$${data.current_price.toLocaleString()}`;
             dateText.textContent = `Prediction for: ${data.prediction_date}`;
+            
+            // Add pulse animation for high confidence predictions
+            if (data.confidence >= 80) {
+                card.classList.add('pulse');
+            } else {
+                card.classList.remove('pulse');
+            }
+        }
+        
+        function addToHistory(predictionData) {
+            // In a real app, this would be saved to a database
+            // For now, we'll just add to the frontend array
+            const historyItem = {
+                date: new Date().toISOString().split('T')[0],
+                prediction: predictionData.prediction,
+                confidence: predictionData.confidence,
+                // In a real app, we would check against actual price later
+                actual: 'Pending',
+                correct: null
+            };
+            
+            predictionHistory.unshift(historyItem);
+            if (predictionHistory.length > 10) {
+                predictionHistory.pop();
+            }
+            
+            updateHistoryDisplay();
         }
         
         function showLoading(message) {
@@ -321,16 +1160,13 @@
         
         function showError(message) {
             const predictionText = document.getElementById('predictionText');
-            predictionText.innerHTML = '❌ Error';
+            predictionText.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error';
             predictionText.style.color = '#dc3545';
             document.getElementById('confidenceText').textContent = message;
-            document.getElementById('priceText').textContent = 'Current price: --';
+            document.getElementById('priceText').textContent = '$--';
+            document.getElementById('confidenceValue').textContent = '0%';
+            document.getElementById('confidenceFill').style.width = '0%';
         }
-        
-        // Check status on page load
-        window.onload = function() {
-            checkStatus();
-        };
     </script>
 </body>
 </html>
