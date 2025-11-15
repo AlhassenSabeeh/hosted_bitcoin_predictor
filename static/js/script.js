@@ -87,14 +87,14 @@ function initializeCharts() {
         }
     });
     
-    // Sentiment Chart
+    // Sentiment Chart - FIXED VERSION
     const sentimentCtx = document.getElementById('sentimentChart').getContext('2d');
     sentimentChart = new Chart(sentimentCtx, {
         type: 'bar',
         data: {
             labels: ['Positive', 'Neutral', 'Negative'],
             datasets: [{
-                label: 'Wikipedia Sentiment',
+                label: 'Wikipedia Sentiment (Last 30 Days)',
                 data: [0, 0, 0],
                 backgroundColor: [
                     'rgba(40, 167, 69, 0.8)',
@@ -114,6 +114,22 @@ function initializeCharts() {
             plugins: {
                 legend: {
                     position: 'top',
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `${context.dataset.label}: ${context.parsed.y} days`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Number of Days'
+                    }
                 }
             }
         }
@@ -236,26 +252,34 @@ async function loadPriceHistory() {
     }
 }
 
-// Load sentiment data from API
+// Load sentiment data from API - FIXED VERSION
 async function loadSentimentData() {
     try {
         const response = await fetch('/api/sentiment_data');
         const data = await response.json();
         
+        console.log('Sentiment API response:', data); // Debug log
+        
         if (data.status === 'success') {
             const sentiment = data.data;
+            
+            // Update sentiment chart with the actual data
             sentimentChart.data.datasets[0].data = [
                 sentiment.positive,
                 sentiment.neutral,
                 sentiment.negative
             ];
             sentimentChart.update();
+            
+            // Log for debugging
+            console.log(`📊 Sentiment Chart Updated: Positive=${sentiment.positive}, Neutral=${sentiment.neutral}, Negative=${sentiment.negative}`);
         }
     } catch (error) {
         console.error('Error loading sentiment data:', error);
         // Fallback to sample data
         sentimentChart.data.datasets[0].data = [12, 8, 5];
         sentimentChart.update();
+        console.log('📊 Using fallback sentiment data');
     }
 }
 
@@ -753,3 +777,17 @@ function showError(message) {
         dateText.textContent = '';
     }
 }
+
+// Debug function to check sentiment data
+async function debugSentiment() {
+    try {
+        const response = await fetch('/api/debug_sentiment');
+        const data = await response.json();
+        console.log('Debug Sentiment Data:', data);
+    } catch (error) {
+        console.error('Error debugging sentiment:', error);
+    }
+}
+
+// Uncomment the line below to debug sentiment data on page load
+// debugSentiment();
