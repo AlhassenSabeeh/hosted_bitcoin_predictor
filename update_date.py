@@ -48,6 +48,17 @@ def update_bitcoin_model():
             model_info = predictor.get_model_info()
             print(f"   - Features used: {model_info['predictors_count']}")
             print(f"   - Training date: {model_info['training_date']}")
+            import pickle, json
+            import os
+            os.makedirs("models/saved_models", exist_ok=True)
+
+            with open("models/saved_models/bitcoin_model.pkl", "wb") as f:
+                pickle.dump(predictor.model, f)
+
+            with open("models/saved_models/feature_info.json", "w") as f:
+                json.dump(model_info, f)
+
+            print("✅ Model and feature info saved successfully")
             return prediction
         else:
             error_msg = prediction.get('error', 'Unknown error') if prediction else 'No prediction returned'
