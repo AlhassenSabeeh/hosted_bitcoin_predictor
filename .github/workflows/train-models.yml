@@ -110,4 +110,4 @@ jobs:
         with:
           asset_paths: "models/saved_models/*.pkl,models/saved_models/*.json"
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          release_url: ${{ steps.create_release.outputs.upload_url }}
+          tag: ${{ env.RELEASE_TAG }}
