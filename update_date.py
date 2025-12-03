@@ -1,10 +1,13 @@
 from models.sentiment_analyzer import WikipediaSentimentAnalyzer
 from models.price_predictor import BitcoinPricePredictor
+from sklearn.dummy import DummyRegressor
 import time
 from datetime import datetime
 import os
 import pickle
 import json
+import pandas as pd
+import numpy as np
 
 def update_wikipedia_data():
     """Update Wikipedia sentiment data with enhanced error handling"""
@@ -45,9 +48,6 @@ def save_model_and_info(predictor):
     # Save trained model
     if not hasattr(predictor, "model") or predictor.model is None:
         # Create a dummy model if training failed
-        from sklearn.dummy import DummyRegressor
-        import pandas as pd
-        import numpy as np
         predictor.model = DummyRegressor(strategy="mean")
         X_fake = pd.DataFrame(np.zeros((10,1)), columns=["feature"])
         y_fake = np.zeros(10)
@@ -57,23 +57,52 @@ def save_model_and_info(predictor):
         pickle.dump(predictor.model, f)
 
     # Save feature info
-    if hasattr(predictor, "get_model_info"):
-        feature_info = predictor.get_model_info()
-        # Ensure required fields exist
-        if "backtest_precision" not in feature_info:
-            feature_info["backtest_precision"] = None
-        if "backtest_accuracy" not in feature_info:
-            feature_info["backtest_accuracy"] = None
+    feature_info = None
+
+    # 1) Prefer the detailed feature_info.json written by the training pipeline
+    if os.path.exists(feature_info_path):
+        try:
+            with open(feature_info_path, "r") as f:
+                loaded_info = json.load(f)
+            if isinstance(loaded_info, dict):
+                feature_info = loaded_info
+        except Exception as e:
+            print(f"⚠️ Failed to load existing feature_info.json: {e}")
+
+    # 2) Fallback: build from predictor.get_model_info() if needed
+    if feature_info is None:
+        if hasattr(predictor, "get_model_info"):
+            feature_info = predictor.get_model_info()
+        else:
+            feature_info = {
+                "predictors_count": 1,
+                "training_date": str(datetime.now()),
+            }
+
+    # 3) Ensure backtest metrics are present and, if available on the predictor,
+    #    use the real numeric values instead of None
+    backtest_precision_attr = getattr(predictor, "backtest_precision", None)
+    backtest_accuracy_attr = getattr(predictor, "backtest_accuracy", None)
+
+    if backtest_precision_attr is not None:
+        try:
+            feature_info["backtest_precision"] = float(backtest_precision_attr)
+        except Exception:
+            # If conversion fails, keep whatever is already in the file
+            feature_info.setdefault("backtest_precision", None)
     else:
-        feature_info = {
-            "predictors_count": 1,
-            "training_date": str(datetime.now()),
-            "backtest_precision": None,
-            "backtest_accuracy": None
-        }
+        feature_info.setdefault("backtest_precision", None)
+
+    if backtest_accuracy_attr is not None:
+        try:
+            feature_info["backtest_accuracy"] = float(backtest_accuracy_attr)
+        except Exception:
+            feature_info.setdefault("backtest_accuracy", None)
+    else:
+        feature_info.setdefault("backtest_accuracy", None)
 
     with open(feature_info_path, "w") as f:
-        json.dump(feature_info, f)
+        json.dump(feature_info, f, indent=2)
 
     print(f"✅ Model and feature info saved to {folder}")
 
