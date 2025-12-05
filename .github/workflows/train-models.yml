@@ -43,8 +43,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Create models directory
-        run: mkdir -p models/saved_models
+      - name: Clean and prepare models directory
+
+        run: |
+          # Remove the directory and all contents if it exists
+          rm -rf models/saved_models/*
+          # Recreate the directory fresh and empty
+          mkdir -p models/saved_models
 
       - name: Train models and update data
         run: python update_date.py
@@ -69,12 +74,13 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           
+          # This stages new files, modified files, AND deletions
+          git add --all models/saved_models/
+          git add wikipedia_edits.csv
           if git diff --quiet && git diff --staged --quiet; then
             echo "No changes to commit"
           else
-            git add models/saved_models/*.pkl
-            git add models/saved_models/*.json
-            git add wikipedia_edits.csv
+            
             git commit -m "🤖 Auto-update: Retrain models and update data [skip ci]" || exit 0
             git pull --rebase origin main
             git push
