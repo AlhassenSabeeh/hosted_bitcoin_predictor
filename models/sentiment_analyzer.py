@@ -35,14 +35,16 @@ class WikipediaSentimentAnalyzer:
         return None
 
     def fetch_wikipedia_data(self, start_date=None):
-        """Fetch Wikipedia revisions - incremental if existing data found"""
+        """Fetch Wikipedia revisions - incremental if existing data found
         if start_date:
             print(f"📥 Fetching Wikipedia Bitcoin page edits since {start_date.strftime('%Y-%m-%d')}...")
             start_date_str = start_date.strftime('%Y-%m-%dT%H:%M:%SZ')
         else:
             print("📥 Fetching complete Wikipedia Bitcoin page history...")
             start_date_str = '2010-01-01T00:00:00Z'
-        
+        """
+        print("📥 Fetching complete Wikipedia Bitcoin page history...")
+            start_date_str = '2014-01-01T00:00:00Z'
         try:
             site = mwclient.Site("en.wikipedia.org")
             site.rate_limit_wait = True
