@@ -76,6 +76,7 @@ jobs:
             git add models/saved_models/*.json
             git add wikipedia_edits.csv
             git commit -m "🤖 Auto-update: Retrain models and update data [skip ci]" || exit 0
+            git pull --rebase origin main
             git push
           fi
 
