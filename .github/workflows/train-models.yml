@@ -83,14 +83,31 @@ jobs:
           if git diff --staged --quiet; then
             echo "No changes to commit."
           else
-            # Commit the changes using --no-edit to prevent interactive editor
+            # 1. Commit the new model/data changes
             git commit -m "🤖 Auto-update: Retrain models and update data [skip ci]" --no-edit
             
-            # PULL & MERGE: Explicitly force a merge strategy (not rebase)
-            # This is the most reliable way to handle conflicts non-interactively.
-            git pull --no-rebase origin main
+            # 2. Pull remote changes using merge strategy. 
+            # Use '|| true' to allow the script to continue if a conflict occurs.
+            git pull --no-rebase origin main || true
             
-            # Push the resulting commit (or merge commit)
+            # 3. Check for and resolve conflicts if they occurred
+            if git status --porcelain | grep "^UU"; then
+                echo "Conflict detected! Resolving in favor of locally generated files ('ours')."
+                
+                # 'ours' refers to the files from the branch that performed the commit (the new model/data)
+                git checkout --ours models/saved_models/bitcoin_model.pkl
+                git checkout --ours models/saved_models/feature_info.json
+                git checkout --ours wikipedia_edits.csv
+                
+                # Mark conflicts as resolved (by using our version)
+                git add models/saved_models/bitcoin_model.pkl models/saved_models/feature_info.json wikipedia_edits.csv
+                
+                # Finalize the merge commit
+                git commit --no-edit --no-verify
+                echo "Merge conflict resolved successfully."
+            fi
+            
+            # 4. Push the final commit (or merge commit)
             git push
           fi
 
