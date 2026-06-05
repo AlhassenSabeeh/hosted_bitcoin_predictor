@@ -43,12 +43,12 @@
     "trend_365",
     "edit_365"
   ],
-  "training_date": "2026-06-04T06:50:34.627788",
+  "training_date": "2026-06-05T06:29:54.842121",
   "training_samples": 4279,
-  "backtest_precision": 0.5204024594745668,
-  "backtest_accuracy": 0.5100502512562815,
+  "backtest_precision": 0.5198434879821129,
+  "backtest_accuracy": 0.5097361809045227,
   "data_date_range": {
     "start": "2014-09-17 00:00:00",
-    "end": "2026-06-04 00:00:00"
+    "end": "2026-06-05 00:00:00"
   }
 }
